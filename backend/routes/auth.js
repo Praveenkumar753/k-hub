@@ -19,6 +19,15 @@ router.post('/register', async (req, res) => {
             });
         }
 
+        // Check database connection and existing users
+        console.log('🔍 Checking database for existing users...');
+        console.log('🔗 MongoDB connection state:', require('mongoose').connection.readyState);
+        console.log('📊 Database name:', require('mongoose').connection.name);
+        
+        // Count total users in database
+        const totalUsers = await User.countDocuments();
+        console.log('👥 Total users in database:', totalUsers);
+        
         // Check if user exists
         const existingUser = await User.findOne({
             $or: [{ email }, { username }]
@@ -26,10 +35,18 @@ router.post('/register', async (req, res) => {
 
         if (existingUser) {
             console.log('❌ User already exists:', existingUser.email === email ? 'email' : 'username');
+            console.log('📋 Existing user details:', {
+                id: existingUser._id,
+                email: existingUser.email,
+                username: existingUser.username,
+                createdAt: existingUser.createdAt
+            });
             return res.status(400).json({
                 error: 'User with this email or username already exists'
             });
         }
+        
+        console.log('✅ No existing user found, proceeding with registration...');
 
         // Create new user
         const user = new User({
