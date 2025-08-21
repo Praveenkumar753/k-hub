@@ -8,12 +8,24 @@ router.post('/register', async (req, res) => {
     try {
         const { username, email, password, fullName, role } = req.body;
 
+        // Debug logging
+        console.log('📝 Registration attempt:', { username, email, fullName, role, passwordLength: password?.length });
+
+        // Validate required fields
+        if (!username || !email || !password || !fullName) {
+            console.log('❌ Missing required fields');
+            return res.status(400).json({
+                error: 'All fields (username, email, password, fullName) are required'
+            });
+        }
+
         // Check if user exists
         const existingUser = await User.findOne({
             $or: [{ email }, { username }]
         });
 
         if (existingUser) {
+            console.log('❌ User already exists:', existingUser.email === email ? 'email' : 'username');
             return res.status(400).json({
                 error: 'User with this email or username already exists'
             });
@@ -29,6 +41,8 @@ router.post('/register', async (req, res) => {
         });
 
         await user.save();
+
+        console.log('✅ User created successfully:', user.email);
 
         // Generate JWT token
         const token = jwt.sign(
@@ -50,6 +64,25 @@ router.post('/register', async (req, res) => {
         });
     } catch (error) {
         console.error('Registration error:', error);
+        
+        // Handle mongoose validation errors
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(e => e.message);
+            console.log('❌ Validation errors:', messages);
+            return res.status(400).json({
+                error: `Validation failed: ${messages.join(', ')}`
+            });
+        }
+        
+        // Handle duplicate key errors
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            console.log('❌ Duplicate key error:', field);
+            return res.status(400).json({
+                error: `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`
+            });
+        }
+        
         res.status(500).json({ error: 'Internal server error' });
     }
 });
