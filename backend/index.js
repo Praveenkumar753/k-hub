@@ -11,7 +11,27 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors());
+// CORS Configuration
+const corsOptions = {
+    origin: [
+        'http://localhost:3000',
+        'http://localhost:3001', 
+        'https://k-hub-praveenkumar753s-projects.vercel.app', // Your actual Vercel backend
+        'https://your-frontend-domain.com', // Replace with your actual frontend domain
+        'https://k-hub-frontend.vercel.app', // Example if using Vercel
+        'https://k-hub-frontend.netlify.app', // Example if using Netlify
+        /^https:\/\/.*\.vercel\.app$/, // Allow any Vercel subdomain
+        /^https:\/\/.*\.netlify\.app$/, // Allow any Netlify subdomain
+        /^https:\/\/.*\.render\.com$/ // Allow any Render subdomain
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    optionsSuccessStatus: 200
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -54,4 +74,5 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
 
