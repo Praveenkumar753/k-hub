@@ -29,7 +29,7 @@ const options = {
 compilex.init(options);
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/coding-test-app', {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/coding-test-app' || 'mongodb+srv://praveen:12345@cluster0.i4zpcov.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 })
@@ -54,3 +54,4 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
