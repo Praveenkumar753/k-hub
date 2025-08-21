@@ -10,14 +10,15 @@ dotenv.config();
 
 const app = express();
 
-// Middleware
-// CORS Configuration
+// CORS Configuration - Allow all origins
 app.use(cors({
     origin: '*', // Allow all origins
-    credentials: true, // Set to false when using '*'
+    credentials: false, // Set to false when using '*'
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -35,12 +36,19 @@ const options = {
 compilex.init(options);
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/coding-test-app' || 'mongodb+srv://praveen:12345@cluster0.i4zpcov.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
+const mongoURI = process.env.MONGODB_URI ;
+console.log('🔗 Connecting to MongoDB:', mongoURI.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@')); // Hide credentials
+
+mongoose.connect(mongoURI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 })
-.then(() => console.log('MongoDB connected successfully'))
-.catch(err => console.error('MongoDB connection error:', err));
+.then(() => {
+    console.log('✅ MongoDB connected successfully');
+    console.log('📊 Database name:', mongoose.connection.name);
+    console.log('🌐 Host:', mongoose.connection.host);
+})
+.catch(err => console.error('❌ MongoDB connection error:', err));
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -60,6 +68,3 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
-
-
-
