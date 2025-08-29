@@ -17,9 +17,18 @@ const authenticateToken = async (req, res, next) => {
             return res.status(401).json({ error: 'Invalid token' });
         }
 
+        // Debug logging
+        // console.log('🔐 Auth Debug:', {
+        //     userId: user._id,
+        //     role: user.role,
+        //     email: user.email,
+        //     tokenPayload: decoded
+        // });
+
         req.user = user;
         next();
     } catch (error) {
+        console.error('❌ Auth Error:', error.message);
         return res.status(403).json({ error: 'Invalid or expired token' });
     }
 };

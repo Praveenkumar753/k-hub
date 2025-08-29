@@ -59,6 +59,8 @@ const submissionsRouter = require('./routes/submissions');
 const coursesRouter = require('./routes/courses');
 const enrollmentsRouter = require('./routes/enrollments');
 const notificationsRouter = require('./routes/notifications');
+const quizzesRouter = require('./routes/quizzes');
+const tasksRouter = require('./routes/tasks');
 
 app.use('/api/auth', authRouter);
 app.use('/api/contests', contestsRouter);
@@ -67,6 +69,8 @@ app.use('/api/submissions', submissionsRouter);
 app.use('/api/courses', coursesRouter);
 app.use('/api/enrollments', enrollmentsRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/quizzes', quizzesRouter);
+app.use('/api/tasks', tasksRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiUser, FiLogOut, FiSettings, FiHome, FiUsers, FiBook } from 'react-icons/fi';
-import NotificationDropdown from './NotificationDropdown';
+import NotificationPanel from './NotificationPanel';
 
 const Navbar = () => {
     const { user, logout, isAdmin } = useAuth();
@@ -68,7 +68,15 @@ const Navbar = () => {
                     </div>
 
                     <div className="flex items-center space-x-4">
-                        {user && <NotificationDropdown />}
+                        {user && (
+                            <NotificationPanel 
+                                type="global" 
+                                autoRefresh={true}
+                                refreshInterval={180000} // 3 minutes
+                                showSettings={true}
+                                showRefresh={true}
+                            />
+                        )}
                         <Link 
                             to="/profile"
                             className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-blue-700 transition-colors"

@@ -106,6 +106,23 @@ const QuestionSolver = () => {
         fetchData();
     }, [fetchData]);
 
+    // Update submission polling logic
+    const pollSubmission = useCallback(async (submissionId) => {
+        try {
+            const result = await submissionService.getSubmission(submissionId);
+            if (result.submission.status === 'completed' || result.submission.status === 'error') {
+                // Refresh submissions list and stop polling
+                const submissionsData = await submissionService.getQuestionSubmissions(contestId, questionId);
+                setSubmissions(submissionsData.submissions);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error polling submission:', error);
+            return true; // Stop polling on error
+        }
+    }, [contestId, questionId]);
+
     const handleSubmit = async () => {
         if (!code.trim()) {
             toast.error('Please write some code before submitting');
@@ -122,42 +139,27 @@ const QuestionSolver = () => {
             };
 
             const response = await submissionService.submitCode(submissionData);
-            
-            // Show initial success message
-            toast.success('Code submitted successfully! Running all test cases...');
-            
-            // Refresh submissions
-            const submissionsData = await submissionService.getQuestionSubmissions(contestId, questionId);
-            setSubmissions(submissionsData.submissions);
+            toast.success('Code submitted successfully! Running test cases...');
 
-            // Set submission results for display
-            if (response.submission && response.submission.testResults) {
-                const testResults = response.submission.testResults.map(result => ({
-                    ...result,
-                    isCorrect: result.status === 'passed',
-                    actualOutput: result.output,
-                    marks: result.marksAwarded,
-                    maxMarks: result.maxMarks
-                }));
+            // Start polling with a max duration
+            let attempts = 0;
+            const maxAttempts = 30; // 30 seconds max
+            const pollInterval = 1000; // 1 second
 
-                const totalVisible = testResults.filter(t => !t.isHidden).length;
-                const totalHidden = testResults.filter(t => t.isHidden).length;
-                const passedVisible = testResults.filter(t => !t.isHidden && t.isCorrect).length;
-                const passedHidden = testResults.filter(t => t.isHidden && t.isCorrect).length;
+            const poll = async () => {
+                if (attempts >= maxAttempts) {
+                    toast.error('Submission processing timeout');
+                    return;
+                }
 
-                setRunResult({
-                    status: 'submission_results',
-                    scorePercentage: response.submission.scorePercentage,
-                    marks: response.submission.marksAwarded,
-                    totalMarks: response.submission.totalMarks,
-                    testResults,
-                    executionTime: testResults.reduce((sum, r) => sum + r.executionTime, 0)
-                });
+                const isDone = await pollSubmission(response.submissionId);
+                if (!isDone) {
+                    attempts++;
+                    setTimeout(poll, pollInterval);
+                }
+            };
 
-                // Show detailed results toast
-                toast.info(`Results:\nSample test cases: ${passedVisible}/${totalVisible} passed\nHidden test cases: ${passedHidden}/${totalHidden} passed`);
-                setShowRunPanel(true);
-            }
+            poll();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Failed to submit code');
         } finally {

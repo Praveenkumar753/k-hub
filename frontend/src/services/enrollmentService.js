@@ -30,5 +30,16 @@ export const enrollmentService = {
     updateProgress: async (courseId, progress) => {
         const response = await api.put(`/enrollments/${courseId}/progress`, progress);
         return response.data;
+    },
+
+    // Admin methods for course management
+    getCourseEnrollments: async (courseId) => {
+        const response = await api.get(`/enrollments/course/${courseId}`);
+        return response.data;
+    },
+
+    getAllEnrollments: async () => {
+        const response = await api.get('/enrollments/all');
+        return response.data;
     }
 };

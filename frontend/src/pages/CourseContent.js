@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiBook, FiChevronRight, FiCheck, FiSquare } from 'react-icons/fi';
+import { FiBook, FiChevronRight, FiCheck, FiSquare, FiHelpCircle } from 'react-icons/fi';
 import { courseService } from '../services/courseService';
 import { enrollmentService } from '../services/enrollmentService';
+import { quizService } from '../services/quizService';
 import Navbar from '../components/Navbar';
-import CourseNotifications from '../components/CourseNotifications';
+import NotificationPanel from '../components/NotificationPanel';
+import ModuleQuizzes from '../components/ModuleQuizzes';
+import ModuleTasks from '../components/ModuleTasks';
+import ModuleSection from '../components/ModuleSection';
 
 const CourseContent = () => {
     const { courseId } = useParams();
@@ -15,8 +19,10 @@ const CourseContent = () => {
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(null);
 
-    const checkEnrollmentAndFetchCourse = async () => {
+    // Use useCallback to prevent function recreation on every render
+    const checkEnrollmentAndFetchCourse = useCallback(async () => {
         try {
+            setLoading(true);
             // Check if user is enrolled and get progress
             const [courseRes, enrollmentsRes] = await Promise.all([
                 courseService.getCourse(courseId),
@@ -59,22 +65,22 @@ const CourseContent = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [courseId, navigate]); // Only depend on courseId and navigate
 
     useEffect(() => {
         checkEnrollmentAndFetchCourse();
-    }, [courseId, checkEnrollmentAndFetchCourse]);
+    }, [checkEnrollmentAndFetchCourse]); // This will now only run when courseId changes
 
-    const handleTopicComplete = async (topicId) => {
+    const handleTopicComplete = useCallback(async (topicId) => {
         try {
             const response = await enrollmentService.markTopicComplete(courseId, topicId);
             setProgress(response.progress);
         } catch (error) {
             console.error('Error marking topic complete:', error);
         }
-    };
+    }, [courseId]);
 
-    const handleTopicSelect = async (module, topic) => {
+    const handleTopicSelect = useCallback(async (module, topic) => {
         try {
             setSelectedModule(module);
             setSelectedTopic(topic);
@@ -85,7 +91,7 @@ const CourseContent = () => {
         } catch (error) {
             console.error('Error updating progress:', error);
         }
-    };
+    }, [courseId]);
 
     const renderContent = (content) => {
         switch (content.type) {
@@ -199,7 +205,14 @@ const CourseContent = () => {
                         <h1 className="text-2xl font-bold text-gray-900">{course?.title}</h1>
                         <p className="text-gray-600">{course?.subtitle}</p>
                     </div>
-                    <CourseNotifications courseId={courseId} />
+                    <NotificationPanel 
+                        type="course" 
+                        courseId={courseId}
+                        autoRefresh={true}
+                        refreshInterval={120000} // 2 minutes for course-specific
+                        showSettings={false}
+                        showRefresh={true}
+                    />
                 </div>
                 {/* Course Progress Bar */}
                 {progress && (
@@ -222,70 +235,30 @@ const CourseContent = () => {
                 )}
 
                 <div className="flex flex-col lg:flex-row gap-8">
-                    {/* Sidebar - Module List */}
-                    <div className="lg:w-1/4">
+                    {/* Sidebar - Module List with Topics, Quizzes, and Tasks */}
+                    <div className="lg:w-1/3">
                         <div className="bg-white rounded-lg shadow p-4">
                             <h2 className="text-xl font-bold mb-4">Course Content</h2>
-                            <div className="space-y-2">
+                            <div className="space-y-4">
                                 {course?.modules?.map((module) => (
-                                    <div key={module._id}>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedModule(module);
-                                                if (module.mainTopics?.length > 0) {
-                                                    handleTopicSelect(module, module.mainTopics[0]);
-                                                }
-                                            }}
-                                            className={`w-full text-left p-3 rounded-lg flex items-center justify-between ${
-                                                selectedModule?._id === module._id
-                                                    ? 'bg-blue-50 text-blue-600'
-                                                    : 'hover:bg-gray-50'
-                                            }`}
-                                        >
-                                            <span className="font-medium">{module.name}</span>
-                                            <FiChevronRight className={`transform transition-transform ${
-                                                selectedModule?._id === module._id ? 'rotate-90' : ''
-                                            }`} />
-                                        </button>
-                                        
-                                        {selectedModule?._id === module._id && (
-                                            <div className="ml-4 mt-2 space-y-1">
-                                                {module.mainTopics?.map((topic) => (
-                                                    <button
-                                                        key={topic._id}
-                                                        onClick={() => handleTopicSelect(module, topic)}
-                                                        className={`w-full text-left p-2 rounded flex items-center justify-between ${
-                                                            selectedTopic?._id === topic._id
-                                                                ? 'bg-blue-100 text-blue-600'
-                                                                : 'hover:bg-gray-50'
-                                                        }`}
-                                                    >
-                                                        <span className="flex-1">{topic.name}</span>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleTopicComplete(topic._id);
-                                                            }}
-                                                            className="p-1 hover:bg-blue-200 rounded"
-                                                        >
-                                                            {progress?.completedTopics.includes(topic._id) ? (
-                                                                <FiCheck className="w-4 h-4 text-green-500" />
-                                                            ) : (
-                                                                <FiSquare className="w-4 h-4" />
-                                                            )}
-                                                        </button>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
+                                    <ModuleSection 
+                                        key={module._id}
+                                        module={module}
+                                        courseId={courseId}
+                                        selectedModule={selectedModule}
+                                        selectedTopic={selectedTopic}
+                                        progress={progress}
+                                        onModuleSelect={setSelectedModule}
+                                        onTopicSelect={handleTopicSelect}
+                                        onTopicComplete={handleTopicComplete}
+                                    />
                                 ))}
                             </div>
                         </div>
                     </div>
 
                     {/* Main Content Area */}
-                    <div className="lg:w-3/4">
+                    <div className="lg:w-2/3">
                         <div className="bg-white rounded-lg shadow p-6">
                             {selectedTopic ? (
                                 <>
@@ -325,10 +298,18 @@ const CourseContent = () => {
                                         ))}
                                     </div>
                                 </>
+                            ) : selectedModule ? (
+                                <div className="text-center">
+                                    <div className="mb-6">
+                                        <FiBook className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                                        <h2 className="text-xl font-semibold text-gray-700 mb-2">{selectedModule.name}</h2>
+                                        <p className="text-gray-500">Select a topic from the left sidebar to start learning</p>
+                                    </div>
+                                </div>
                             ) : (
                                 <div className="text-center text-gray-500">
                                     <FiBook className="w-16 h-16 mx-auto mb-4" />
-                                    <p>Select a topic to start learning</p>
+                                    <p>Select a module and topic to start learning</p>
                                 </div>
                             )}
                         </div>

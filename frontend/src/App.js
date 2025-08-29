@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 // Context
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -20,16 +21,20 @@ import UserProfile from './pages/UserProfile';
 import UserCourses from './pages/UserCourses';
 import CourseDetails from './pages/CourseDetails';
 import CourseContent from './pages/CourseContent';
+import Quizzes from './pages/Quizzes';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import CreateContest from './pages/admin/CreateContest';
 import EditContest from './pages/admin/EditContest';
+import ContestManagement from './pages/admin/ContestManagement';
 import UserManagement from './pages/admin/UserManagement';
 import CreateCourse from './pages/admin/CreateCourse';
 import Courses from './pages/admin/Courses';
 import ModuleList from './pages/admin/ModuleList';
 import NotificationManagement from './pages/admin/NotificationManagement';
+import AddQuiz from './pages/admin/AddQuiz';
+import AddTask from './pages/admin/AddTask';
 
 // Styles
 import './App.css';
@@ -46,130 +51,159 @@ console.error = (...args) => {
 function App() {
   return (
     <AuthProvider>
-      <Router future={{ v7_relativeSplatPath: true }}>
-        <div className="App">
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+      <NotificationProvider>
+        <Router future={{ v7_relativeSplatPath: true }}>
+          <div className="App">
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              
+              {/* Protected Routes */}
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <ContestList />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <UserProfile />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/contest/:contestId" element={
+                <ProtectedRoute>
+                  <ContestDetails />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/contest/:contestId/question/:questionId" element={
+                <ProtectedRoute>
+                  <QuestionSolver />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/submission/:submissionId" element={
+                <ProtectedRoute>
+                  <SubmissionResult />
+                </ProtectedRoute>
+              } />
+              
+              {/* Course Routes */}
+              <Route path="/courses" element={
+                <ProtectedRoute>
+                  <UserCourses />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/courses/:courseId" element={
+                <ProtectedRoute>
+                  <CourseDetails />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/courses/:courseId/learn" element={
+                <ProtectedRoute>
+                  <CourseContent />
+                </ProtectedRoute>
+              } />
+              
+              {/* Quiz Routes */}
+              <Route path="/quiz/:quizId" element={
+                <ProtectedRoute>
+                  <Quizzes />
+                </ProtectedRoute>
+              } />
+              
+              {/* Admin Routes */}
+              <Route path="/admin" element={
+                <ProtectedRoute adminOnly={true}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/user-management" element={
+                <ProtectedRoute adminOnly={true}>
+                  <UserManagement />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/contests/new" element={
+                <ProtectedRoute adminOnly={true}>
+                  <CreateContest />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/contests/:contestId/edit" element={
+                <ProtectedRoute adminOnly={true}>
+                  <EditContest />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/contests/:contestId" element={
+                <ProtectedRoute adminOnly={true}>
+                  <ContestManagement />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/courses/new" element={
+                <ProtectedRoute adminOnly={true}>
+                  <CreateCourse />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/courses" element={
+                <ProtectedRoute adminOnly={true}>
+                  <Courses />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/courses/:courseId/modules" element={
+                <ProtectedRoute adminOnly={true}>
+                  <ModuleList />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/notifications" element={
+                <ProtectedRoute adminOnly={true}>
+                  <NotificationManagement />
+                </ProtectedRoute>
+              } />
+              
+              {/* Admin Quiz Routes */}
+              <Route path="/admin/quizzes/new/:courseId/:moduleId" element={
+                <ProtectedRoute adminOnly={true}>
+                  <AddQuiz />
+                </ProtectedRoute>
+              } />
+              
+              {/* Admin Task Routes */}
+              <Route path="/admin/tasks/new/:courseId/:moduleId" element={
+                <ProtectedRoute adminOnly={true}>
+                  <AddTask />
+                </ProtectedRoute>
+              } />
+              
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
             
-            {/* Protected Routes */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <ContestList />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <UserProfile />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/contest/:contestId" element={
-              <ProtectedRoute>
-                <ContestDetails />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/contest/:contestId/question/:questionId" element={
-              <ProtectedRoute>
-                <QuestionSolver />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/submission/:submissionId" element={
-              <ProtectedRoute>
-                <SubmissionResult />
-              </ProtectedRoute>
-            } />
-            
-            {/* Course Routes */}
-            <Route path="/courses" element={
-              <ProtectedRoute>
-                <UserCourses />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/courses/:courseId" element={
-              <ProtectedRoute>
-                <CourseDetails />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/courses/:courseId/learn" element={
-              <ProtectedRoute>
-                <CourseContent />
-              </ProtectedRoute>
-            } />
-            
-            {/* Admin Routes */}
-            <Route path="/admin" element={
-              <ProtectedRoute adminOnly={true}>
-                <AdminDashboard />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/admin/user-management" element={
-              <ProtectedRoute adminOnly={true}>
-                <UserManagement />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/admin/contests/new" element={
-              <ProtectedRoute adminOnly={true}>
-                <CreateContest />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/admin/contests/:contestId/edit" element={
-              <ProtectedRoute adminOnly={true}>
-                <EditContest />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/admin/courses/new" element={
-              <ProtectedRoute adminOnly={true}>
-                <CreateCourse />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/admin/courses" element={
-              <ProtectedRoute adminOnly={true}>
-                <Courses />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/admin/courses/:courseId/modules" element={
-              <ProtectedRoute adminOnly={true}>
-                <ModuleList />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/admin/notifications" element={
-              <ProtectedRoute adminOnly={true}>
-                <NotificationManagement />
-              </ProtectedRoute>
-            } />
-            
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-          
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            newestOnTop={false}
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="light"
-          />
-        </div>
-      </Router>
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
+          </div>
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

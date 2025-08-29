@@ -204,4 +204,57 @@ router.put('/:courseId/status', async (req, res) => {
     }
 });
 
+// Get all enrollments for a specific course (Admin only)
+router.get('/course/:courseId', async (req, res) => {
+    try {
+        // Check if user is admin or instructor
+        if (!['admin', 'instructor'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Admin or instructor access required' });
+        }
+
+        const enrollment = await Enrollment.findOne({ courseId: req.params.courseId })
+            .populate('enrollments.userId', 'fullName username email teamNumber batchYear');
+        
+        if (!enrollment) {
+            return res.json({ enrollments: [] });
+        }
+
+        // Transform the data to match the expected format
+        const enrollments = enrollment.enrollments.map(userEnrollment => ({
+            _id: userEnrollment._id,
+            user: userEnrollment.userId,
+            enrolledAt: userEnrollment.enrolledAt,
+            progress: userEnrollment.completionPercentage,
+            lastAccessedAt: userEnrollment.lastAccessedAt,
+            completedTopics: userEnrollment.completedTopics.length,
+            totalTopics: enrollment.totalTopics,
+            status: userEnrollment.status
+        }));
+        
+        res.json({ enrollments });
+    } catch (error) {
+        console.error('Error fetching course enrollments:', error);
+        res.status(500).json({ error: 'Failed to fetch course enrollments' });
+    }
+});
+
+// Get all enrollments across all courses (Admin only)
+router.get('/all', async (req, res) => {
+    try {
+        // Check if user is admin
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        const enrollments = await Enrollment.find({})
+            .populate('courseId', 'title subtitle')
+            .populate('enrollments.userId', 'fullName username email teamNumber batchYear');
+        
+        res.json({ enrollments });
+    } catch (error) {
+        console.error('Error fetching all enrollments:', error);
+        res.status(500).json({ error: 'Failed to fetch enrollments' });
+    }
+});
+
 module.exports = router;
