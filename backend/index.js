@@ -72,13 +72,42 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/quizzes', quizzesRouter);
 app.use('/api/tasks', tasksRouter);
 
-// Health check
+// Health check endpoint with detailed information
 app.get('/api/health', (req, res) => {
-    res.json({ 
+    const serverInfo = {
         message: 'Server is running',
         timestamp: new Date(),
+        server_id: process.env.SERVER_ID || `server-${process.env.PORT || '5000'}`,
         platform: process.platform,
-        pythonPath: compilerOptions.compilers.python.path
+        uptime: process.uptime(),
+        memory: {
+            used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+            total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024)
+        },
+        version: process.version,
+        port: process.env.PORT || 5000,
+        environment: process.env.NODE_ENV || 'development'
+    };
+    
+    // Add compiler info if available
+    if (compilerOptions && compilerOptions.compilers && compilerOptions.compilers.python) {
+        serverInfo.pythonPath = compilerOptions.compilers.python.path;
+    }
+    
+    res.json(serverInfo);
+});
+
+// Load balancer status endpoint
+app.get('/api/status', (req, res) => {
+    res.json({
+        server_id: process.env.SERVER_ID || `server-${process.env.PORT || '5000'}`,
+        status: 'active',
+        load: {
+            connections: req.app.get('connections') || 0,
+            requests: req.app.get('requests') || 0
+        },
+        database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+        timestamp: new Date()
     });
 });
 

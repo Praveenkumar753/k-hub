@@ -9,6 +9,7 @@ import { NotificationProvider } from './context/NotificationContext';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
+import LoadBalancerDashboard from './components/LoadBalancerDashboard';
 
 // Pages
 import Login from './pages/Login';
@@ -188,6 +189,9 @@ function App() {
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            
+            {/* Load Balancer Dashboard - Only show when authenticated */}
+            <LoadBalancerDashboard />
             
             <ToastContainer
               position="top-right"
