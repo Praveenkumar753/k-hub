@@ -192,6 +192,78 @@ router.post('/', upload.array('taskFiles', 5), async (req, res) => {
     }
 });
 
+// Update task (admin/instructor only)
+router.put('/:taskId', upload.array('taskFiles', 5), async (req, res) => {
+    try {
+        // Check permissions
+        if (!['admin', 'instructor'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Admin or instructor access required' });
+        }
+
+        const { taskId } = req.params;
+        const {
+            title,
+            description,
+            instructions,
+            dueDate,
+            maxScore,
+            allowedFileTypes,
+            existingFiles
+        } = req.body;
+
+        const task = await Task.findById(taskId);
+        if (!task) {
+            return res.status(404).json({ error: 'Task not found' });
+        }
+
+        // Update basic fields
+        if (title) task.title = title;
+        if (description) task.description = description;
+        if (instructions) task.instructions = instructions;
+        if (dueDate) task.dueDate = new Date(dueDate);
+        if (maxScore) task.maxScore = parseInt(maxScore);
+        if (allowedFileTypes) task.allowedFileTypes = allowedFileTypes.split(',');
+
+        // Handle existing files
+        let currentFiles = [];
+        if (existingFiles) {
+            try {
+                const parsedExistingFiles = JSON.parse(existingFiles);
+                currentFiles = Array.isArray(parsedExistingFiles) ? parsedExistingFiles : [];
+            } catch (error) {
+                console.error('Error parsing existing files:', error);
+                currentFiles = task.taskFiles || [];
+            }
+        } else {
+            currentFiles = task.taskFiles || [];
+        }
+
+        // Process newly uploaded files
+        const newFiles = req.files ? req.files.map(file => ({
+            originalName: file.originalname,
+            filename: file.filename,
+            mimetype: file.mimetype,
+            size: file.size
+        })) : [];
+
+        // Combine existing files with new files
+        task.taskFiles = [...currentFiles, ...newFiles];
+
+        task.updatedAt = new Date();
+        await task.save();
+
+        await task.populate('createdBy', 'name email');
+
+        res.json({
+            message: 'Task updated successfully',
+            task
+        });
+    } catch (error) {
+        console.error('Error updating task:', error);
+        res.status(500).json({ error: 'Failed to update task' });
+    }
+});
+
 // Submit task (students)
 router.post('/:taskId/submit', async (req, res) => {
     try {

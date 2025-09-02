@@ -13,10 +13,14 @@ const ModuleList = () => {
     const [course, setCourse] = useState(null);
     const [showModuleModal, setShowModuleModal] = useState(false);
     const [showContentModal, setShowContentModal] = useState(false);
+    const [showEditModuleModal, setShowEditModuleModal] = useState(false);
+    const [showEditContentModal, setShowEditContentModal] = useState(false);
     const [showParticipantsModal, setShowParticipantsModal] = useState(false);
     const [showQuizMarksModal, setShowQuizMarksModal] = useState(false);
     const [showTaskSubmissionsModal, setShowTaskSubmissionsModal] = useState(false);
     const [selectedModule, setSelectedModule] = useState(null);
+    const [editingModule, setEditingModule] = useState(null);
+    const [editingTopic, setEditingTopic] = useState(null);
     const [moduleName, setModuleName] = useState('');
     const [loading, setLoading] = useState(true);
     const [moduleQuizzes, setModuleQuizzes] = useState({});
@@ -31,6 +35,8 @@ const ModuleList = () => {
         content: ''
     });
     const [contentItems, setContentItems] = useState([]);
+    const [editingContentIndex, setEditingContentIndex] = useState(null);
+    const [editingContentItem, setEditingContentItem] = useState({ type: '', content: '' });
 
     const contentTypes = [
         { value: 'heading', label: 'Heading' },
@@ -82,6 +88,30 @@ const ModuleList = () => {
             fetchCourse();
         } catch (error) {
             console.error('Error adding module:', error);
+        }
+    };
+
+    const handleEditModule = async (e) => {
+        e.preventDefault();
+        try {
+            await courseService.updateModule(courseId, editingModule._id, { name: moduleName });
+            setModuleName('');
+            setEditingModule(null);
+            setShowEditModuleModal(false);
+            fetchCourse();
+        } catch (error) {
+            console.error('Error updating module:', error);
+        }
+    };
+
+    const handleDeleteModule = async (moduleId) => {
+        if (window.confirm('Are you sure you want to delete this module? This will also delete all content, quizzes, and tasks within it.')) {
+            try {
+                await courseService.deleteModule(courseId, moduleId);
+                fetchCourse();
+            } catch (error) {
+                console.error('Error deleting module:', error);
+            }
         }
     };
 
@@ -139,6 +169,45 @@ const ModuleList = () => {
             fetchCourse();
         } catch (error) {
             console.error('Error adding content:', error);
+        }
+    };
+
+    const handleEditContent = async (e) => {
+        e.preventDefault();
+        if (contentItems.length === 0) {
+            return;
+        }
+
+        try {
+            await courseService.updateMainTopic(courseId, selectedModule._id, editingTopic._id, {
+                name: mainTopic.name,
+                description: mainTopic.description,
+                contents: contentItems
+            });
+
+            // Reset everything
+            setMainTopic({
+                name: '',
+                description: '',
+                contentType: 'youtube',
+                content: ''
+            });
+            setContentItems([]);
+            setShowEditContentModal(false);
+            fetchCourse();
+        } catch (error) {
+            console.error('Error updating content:', error);
+        }
+    };
+
+    const handleDeleteContent = async (moduleId, topicId) => {
+        if (window.confirm('Are you sure you want to delete this content?')) {
+            try {
+                await courseService.deleteMainTopic(courseId, moduleId, topicId);
+                fetchCourse();
+            } catch (error) {
+                console.error('Error deleting content:', error);
+            }
         }
     };
 
@@ -252,6 +321,34 @@ const ModuleList = () => {
             fetchTaskSubmissions();
         } catch (error) {
             console.error('Error assigning marks:', error);
+        }
+    };
+
+    // Handle deleting quiz
+    const handleDeleteQuiz = async (quizId, quizTitle) => {
+        if (window.confirm(`Are you sure you want to delete the quiz "${quizTitle}"? This will also delete all quiz attempts and cannot be undone.`)) {
+            try {
+                await quizService.deleteQuiz(quizId);
+                // Refresh the course data to update quiz lists
+                fetchCourse();
+            } catch (error) {
+                console.error('Error deleting quiz:', error);
+                alert('Failed to delete quiz. Please try again.');
+            }
+        }
+    };
+
+    // Handle deleting task
+    const handleDeleteTask = async (taskId, taskTitle) => {
+        if (window.confirm(`Are you sure you want to delete the task "${taskTitle}"? This will also delete all submissions and cannot be undone.`)) {
+            try {
+                await taskService.deleteTask(taskId);
+                // Refresh the course data to update task lists
+                fetchCourse();
+            } catch (error) {
+                console.error('Error deleting task:', error);
+                alert('Failed to delete task. Please try again.');
+            }
         }
     };
 
@@ -369,6 +466,24 @@ const ModuleList = () => {
                                 <div className="flex space-x-2">
                                     <button
                                         onClick={() => {
+                                            setEditingModule(module);
+                                            setModuleName(module.name);
+                                            setShowEditModuleModal(true);
+                                        }}
+                                        className="flex items-center space-x-2 px-3 py-1 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200"
+                                    >
+                                        <FiEdit className="w-4 h-4" />
+                                        <span>Edit Module</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteModule(module._id)}
+                                        className="flex items-center space-x-2 px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200"
+                                    >
+                                        <FiX className="w-4 h-4" />
+                                        <span>Delete Module</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
                                             setSelectedModule(module);
                                             setShowContentModal(true);
                                         }}
@@ -405,8 +520,39 @@ const ModuleList = () => {
                                     {module.mainTopics && module.mainTopics.length > 0 ? (
                                         module.mainTopics.map((topic, index) => (
                                             <div key={topic._id || index} className="border-l-4 border-blue-500 pl-4 bg-gray-50 p-3 rounded-r">
-                                                <h5 className="font-medium text-gray-900">{topic.name}</h5>
-                                                <p className="text-sm text-gray-600 mb-2">{topic.description}</p>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="flex-1">
+                                                        <h5 className="font-medium text-gray-900">{topic.name}</h5>
+                                                        <p className="text-sm text-gray-600 mb-2">{topic.description}</p>
+                                                    </div>
+                                                    <div className="flex space-x-1 ml-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingTopic(topic);
+                                                                setSelectedModule(module);
+                                                                setMainTopic({
+                                                                    name: topic.name,
+                                                                    description: topic.description,
+                                                                    contentType: 'youtube',
+                                                                    content: ''
+                                                                });
+                                                                setContentItems(topic.contents || []);
+                                                                setShowEditContentModal(true);
+                                                            }}
+                                                            className="p-1 text-yellow-600 hover:text-yellow-800 hover:bg-yellow-100 rounded"
+                                                            title="Edit Content"
+                                                        >
+                                                            <FiEdit className="w-3 h-3" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteContent(module._id, topic._id)}
+                                                            className="p-1 text-red-600 hover:text-red-800 hover:bg-red-100 rounded"
+                                                            title="Delete Content"
+                                                        >
+                                                            <FiX className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                </div>
                                                 <div className="space-y-1">
                                                     {topic.contents && topic.contents.map((content, idx) => (
                                                         <div key={idx} className="text-xs text-gray-500">
@@ -460,6 +606,12 @@ const ModuleList = () => {
                                                                     className="text-green-600 hover:text-green-700 text-xs"
                                                                 >
                                                                     Edit
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteQuiz(quiz._id, quiz.title)}
+                                                                    className="text-red-600 hover:text-red-700 text-xs"
+                                                                >
+                                                                    Delete
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -536,6 +688,52 @@ const ModuleList = () => {
                 </div>
             )}
 
+            {/* Edit Module Modal */}
+            {showEditModuleModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold">Edit Module</h2>
+                            <button
+                                onClick={() => setShowEditModuleModal(false)}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                <FiX className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleEditModule}>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Module Name
+                                </label>
+                                <input
+                                    type="text"
+                                    value={moduleName}
+                                    onChange={(e) => setModuleName(e.target.value)}
+                                    className="w-full p-2 border rounded-md"
+                                    required
+                                />
+                            </div>
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEditModuleModal(false)}
+                                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+                                >
+                                    Update Module
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* Add Content Modal */}
             {showContentModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
@@ -586,16 +784,94 @@ const ModuleList = () => {
                                                 key={index} 
                                                 className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                                             >
-                                                <div className="flex-1 min-w-0 mr-4">
-                                                    {renderContentPreview(item)}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeContentItem(index)}
-                                                    className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"
-                                                >
-                                                    <FiX className="w-4 h-4" />
-                                                </button>
+                                                {editingContentIndex === index ? (
+                                                    // Edit mode for this content item
+                                                    <div className="flex-1 space-y-2">
+                                                        <div className="flex space-x-2">
+                                                            <select
+                                                                value={editingContentItem.type}
+                                                                onChange={(e) => setEditingContentItem(prev => ({ ...prev, type: e.target.value }))}
+                                                                className="px-2 py-1 border rounded text-sm"
+                                                            >
+                                                                {contentTypes.map(type => (
+                                                                    <option key={type.value} value={type.value}>
+                                                                        {type.label}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            <div className="flex space-x-1">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (editingContentItem.content.trim()) {
+                                                                            const newItems = [...contentItems];
+                                                                            newItems[index] = { ...editingContentItem };
+                                                                            setContentItems(newItems);
+                                                                        }
+                                                                        setEditingContentIndex(null);
+                                                                        setEditingContentItem({ type: '', content: '' });
+                                                                    }}
+                                                                    className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                                                                >
+                                                                    Save
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setEditingContentIndex(null);
+                                                                        setEditingContentItem({ type: '', content: '' });
+                                                                    }}
+                                                                    className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        {editingContentItem.type === 'points' ? (
+                                                            <textarea
+                                                                value={editingContentItem.content}
+                                                                onChange={(e) => setEditingContentItem(prev => ({ ...prev, content: e.target.value }))}
+                                                                className="w-full px-2 py-1 border rounded text-sm"
+                                                                rows="3"
+                                                                placeholder="Enter points separated by new lines"
+                                                            />
+                                                        ) : (
+                                                            <input
+                                                                type={editingContentItem.type === 'youtube' ? 'url' : 'text'}
+                                                                value={editingContentItem.content}
+                                                                onChange={(e) => setEditingContentItem(prev => ({ ...prev, content: e.target.value }))}
+                                                                className="w-full px-2 py-1 border rounded text-sm"
+                                                                placeholder={`Enter ${editingContentItem.type}`}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    // Display mode
+                                                    <>
+                                                        <div className="flex-1 min-w-0 mr-4">
+                                                            {renderContentPreview(item)}
+                                                        </div>
+                                                        <div className="flex space-x-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setEditingContentIndex(index);
+                                                                    setEditingContentItem({ type: item.type, content: item.content });
+                                                                }}
+                                                                className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50"
+                                                                title="Edit Content Item"
+                                                            >
+                                                                <FiEdit className="w-3 h-3" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeContentItem(index)}
+                                                                className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"
+                                                                title="Delete Content Item"
+                                                            >
+                                                                <FiX className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -666,6 +942,241 @@ const ModuleList = () => {
                                     type="button"
                                     onClick={() => {
                                         setShowContentModal(false);
+                                        setContentItems([]);
+                                        setMainTopic({
+                                            name: '',
+                                            description: '',
+                                            contentType: 'youtube',
+                                            content: ''
+                                        });
+                                    }}
+                                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={contentItems.length === 0}
+                                    className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ${
+                                        contentItems.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                                    }`}
+                                >
+                                    Save All Content
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Content Modal */}
+            {showEditContentModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold">Edit Content in {selectedModule?.name}</h2>
+                            <button
+                                onClick={() => setShowEditContentModal(false)}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                <FiX className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleEditContent}>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Main Topic Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        value={mainTopic.name}
+                                        onChange={handleMainTopicChange}
+                                        className="w-full p-2 border rounded-md"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Description
+                                    </label>
+                                    <textarea
+                                        name="description"
+                                        value={mainTopic.description}
+                                        onChange={handleMainTopicChange}
+                                        className="w-full p-2 border rounded-md"
+                                        rows="3"
+                                    />
+                                </div>
+
+                                {/* Content Items List */}
+                                {contentItems.length > 0 && (
+                                    <div className="border rounded-md p-4 space-y-2">
+                                        <h3 className="font-medium text-gray-700 mb-3">Added Content Items:</h3>
+                                        {contentItems.map((item, index) => (
+                                            <div 
+                                                key={index} 
+                                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                                            >
+                                                {editingContentIndex === index ? (
+                                                    // Edit mode for this content item
+                                                    <div className="flex-1 space-y-2">
+                                                        <div className="flex space-x-2">
+                                                            <select
+                                                                value={editingContentItem.type}
+                                                                onChange={(e) => setEditingContentItem(prev => ({ ...prev, type: e.target.value }))}
+                                                                className="px-2 py-1 border rounded text-sm"
+                                                            >
+                                                                {contentTypes.map(type => (
+                                                                    <option key={type.value} value={type.value}>
+                                                                        {type.label}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            <div className="flex space-x-1">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (editingContentItem.content.trim()) {
+                                                                            const newItems = [...contentItems];
+                                                                            newItems[index] = { ...editingContentItem };
+                                                                            setContentItems(newItems);
+                                                                        }
+                                                                        setEditingContentIndex(null);
+                                                                        setEditingContentItem({ type: '', content: '' });
+                                                                    }}
+                                                                    className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                                                                >
+                                                                    Save
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setEditingContentIndex(null);
+                                                                        setEditingContentItem({ type: '', content: '' });
+                                                                    }}
+                                                                    className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        {editingContentItem.type === 'points' ? (
+                                                            <textarea
+                                                                value={editingContentItem.content}
+                                                                onChange={(e) => setEditingContentItem(prev => ({ ...prev, content: e.target.value }))}
+                                                                className="w-full px-2 py-1 border rounded text-sm"
+                                                                rows="3"
+                                                                placeholder="Enter points separated by new lines"
+                                                            />
+                                                        ) : (
+                                                            <input
+                                                                type={editingContentItem.type === 'youtube' ? 'url' : 'text'}
+                                                                value={editingContentItem.content}
+                                                                onChange={(e) => setEditingContentItem(prev => ({ ...prev, content: e.target.value }))}
+                                                                className="w-full px-2 py-1 border rounded text-sm"
+                                                                placeholder={`Enter ${editingContentItem.type}`}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    // Display mode
+                                                    <>
+                                                        <div className="flex-1 min-w-0 mr-4">
+                                                            {renderContentPreview(item)}
+                                                        </div>
+                                                        <div className="flex space-x-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setEditingContentIndex(index);
+                                                                    setEditingContentItem({ type: item.type, content: item.content });
+                                                                }}
+                                                                className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50"
+                                                                title="Edit Content Item"
+                                                            >
+                                                                <FiEdit className="w-3 h-3" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeContentItem(index)}
+                                                                className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"
+                                                                title="Delete Content Item"
+                                                            >
+                                                                <FiX className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Add New Content Item */}
+                                <div className="border-t pt-4">
+                                    <h3 className="font-medium text-gray-700 mb-2">Add New Content Item</h3>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Content Type
+                                            </label>
+                                            <select
+                                                name="contentType"
+                                                value={mainTopic.contentType}
+                                                onChange={handleMainTopicChange}
+                                                className="w-full p-2 border rounded-md"
+                                            >
+                                                {contentTypes.map(type => (
+                                                    <option key={type.value} value={type.value}>
+                                                        {type.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Content
+                                            </label>
+                                            {mainTopic.contentType === 'points' ? (
+                                                <textarea
+                                                    name="content"
+                                                    value={mainTopic.content}
+                                                    onChange={handleMainTopicChange}
+                                                    className="w-full p-2 border rounded-md"
+                                                    rows="4"
+                                                    placeholder="Enter points separated by new lines"
+                                                />
+                                            ) : (
+                                                <input
+                                                    type={mainTopic.contentType === 'youtube' ? 'url' : 'text'}
+                                                    name="content"
+                                                    value={mainTopic.content}
+                                                    onChange={handleMainTopicChange}
+                                                    className="w-full p-2 border rounded-md"
+                                                    placeholder={
+                                                        mainTopic.contentType === 'youtube' 
+                                                            ? 'Enter YouTube URL' 
+                                                            : `Enter ${mainTopic.contentType}`
+                                                    }
+                                                />
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleAddContentItem}
+                                            className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                                        >
+                                            Add This Content Item
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end space-x-3 mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowEditContentModal(false);
                                         setContentItems([]);
                                         setMainTopic({
                                             name: '',
@@ -1091,6 +1602,7 @@ const TaskSubmissionSection = ({ taskData, onAssignMarks }) => {
 
 // Module Task Marks Component
 const ModuleTaskMarks = ({ moduleId, courseId }) => {
+    const navigate = useNavigate();
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(false);
 
@@ -1128,6 +1640,19 @@ const ModuleTaskMarks = ({ moduleId, courseId }) => {
         }
     };
 
+    const handleDeleteTask = async (taskId, taskTitle) => {
+        if (window.confirm(`Are you sure you want to delete the task "${taskTitle}"? This will also delete all submissions and cannot be undone.`)) {
+            try {
+                await taskService.deleteTask(taskId);
+                // Refresh the tasks list
+                fetchModuleTasks();
+            } catch (error) {
+                console.error('Error deleting task:', error);
+                alert('Failed to delete task. Please try again.');
+            }
+        }
+    };
+
     if (loading) {
         return <div className="text-gray-500 text-sm">Loading tasks...</div>;
     }
@@ -1155,6 +1680,20 @@ const ModuleTaskMarks = ({ moduleId, courseId }) => {
                                 <div className="text-xs text-gray-500">
                                     Max Score: {task.maxScore}
                                 </div>
+                            </div>
+                            <div className="flex space-x-1">
+                                <button
+                                    onClick={() => navigate(`/admin/tasks/edit/${task._id}`)}
+                                    className="text-green-600 hover:text-green-700 text-xs"
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    onClick={() => handleDeleteTask(task._id, task.title)}
+                                    className="text-red-600 hover:text-red-700 text-xs"
+                                >
+                                    Delete
+                                </button>
                             </div>
                         </div>
                         <div className="space-y-1">

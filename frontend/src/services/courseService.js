@@ -37,9 +37,33 @@ export const courseService = {
         return response.data;
     },
 
+    // Update module
+    updateModule: async (courseId, moduleId, moduleData) => {
+        const response = await api.put(`/courses/${courseId}/modules/${moduleId}`, moduleData);
+        return response.data;
+    },
+
+    // Delete module
+    deleteModule: async (courseId, moduleId) => {
+        const response = await api.delete(`/courses/${courseId}/modules/${moduleId}`);
+        return response.data;
+    },
+
     // Add main topic to module
     addMainTopic: async (courseId, moduleId, topicData) => {
         const response = await api.post(`/courses/${courseId}/modules/${moduleId}/topics`, topicData);
+        return response.data;
+    },
+
+    // Update main topic
+    updateMainTopic: async (courseId, moduleId, topicId, topicData) => {
+        const response = await api.put(`/courses/${courseId}/modules/${moduleId}/topics/${topicId}`, topicData);
+        return response.data;
+    },
+
+    // Delete main topic
+    deleteMainTopic: async (courseId, moduleId, topicId) => {
+        const response = await api.delete(`/courses/${courseId}/modules/${moduleId}/topics/${topicId}`);
         return response.data;
     }
 };

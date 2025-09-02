@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiBook, FiPlus, FiList } from 'react-icons/fi';
+import { FiBook, FiPlus, FiList, FiEdit } from 'react-icons/fi';
 import { courseService } from '../../services/courseService';
 import Navbar from '../../components/Navbar';
 
@@ -59,6 +59,13 @@ const Courses = () => {
                                     >
                                         <FiList className="mr-1" />
                                         Add Modules
+                                    </button>
+                                    <button
+                                        onClick={() => navigate(`/admin/courses/${course._id}/edit`)}
+                                        className="w-full px-3 py-1 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 flex items-center justify-center"
+                                    >
+                                        <FiEdit className="mr-1" />
+                                        Edit Course
                                     </button>
                                     <button
                                         onClick={() => navigate(`/admin/courses/${course._id}`)}

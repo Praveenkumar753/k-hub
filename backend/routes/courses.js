@@ -179,7 +179,8 @@ router.delete('/:courseId/modules/:moduleId', requireAdmin, async (req, res) => 
             return res.status(404).json({ error: 'Course not found' });
         }
 
-        course.modules.id(req.params.moduleId).remove();
+        // Use pull method instead of remove
+        course.modules.pull(req.params.moduleId);
         await course.save();
         console.log('Module deleted successfully');
 
@@ -219,6 +220,81 @@ router.post('/:courseId/modules/:moduleId/topics', requireAdmin, async (req, res
     } catch (error) {
         console.error('Main topic addition error:', error);
         res.status(500).json({ error: 'Failed to add main topic' });
+    }
+});
+
+// Update main topic
+router.put('/:courseId/modules/:moduleId/topics/:topicId', requireAdmin, async (req, res) => {
+    console.log('🌐 PUT /api/courses/:courseId/modules/:moduleId/topics/:topicId called');
+    console.log('Updating topic:', req.params.topicId);
+    try {
+        const course = await Course.findById(req.params.courseId);
+        
+        if (!course) {
+            return res.status(404).json({ error: 'Course not found' });
+        }
+
+        const module = course.modules.id(req.params.moduleId);
+        if (!module) {
+            return res.status(404).json({ error: 'Module not found' });
+        }
+
+        const topic = module.mainTopics.id(req.params.topicId);
+        if (!topic) {
+            return res.status(404).json({ error: 'Main topic not found' });
+        }
+
+        // Update topic fields
+        topic.name = req.body.name;
+        topic.description = req.body.description;
+        topic.contents = req.body.contents;
+
+        await course.save();
+        console.log('Main topic updated successfully');
+
+        res.json({
+            message: 'Main topic updated successfully',
+            course
+        });
+    } catch (error) {
+        console.error('Main topic update error:', error);
+        res.status(500).json({ error: 'Failed to update main topic' });
+    }
+});
+
+// Delete main topic
+router.delete('/:courseId/modules/:moduleId/topics/:topicId', requireAdmin, async (req, res) => {
+    console.log('🌐 DELETE /api/courses/:courseId/modules/:moduleId/topics/:topicId called');
+    console.log('Deleting topic:', req.params.topicId);
+    try {
+        const course = await Course.findById(req.params.courseId);
+        
+        if (!course) {
+            return res.status(404).json({ error: 'Course not found' });
+        }
+
+        const module = course.modules.id(req.params.moduleId);
+        if (!module) {
+            return res.status(404).json({ error: 'Module not found' });
+        }
+
+        const topic = module.mainTopics.id(req.params.topicId);
+        if (!topic) {
+            return res.status(404).json({ error: 'Main topic not found' });
+        }
+
+        // Use pull method instead of remove
+        module.mainTopics.pull(req.params.topicId);
+        await course.save();
+        console.log('Main topic deleted successfully');
+
+        res.json({
+            message: 'Main topic deleted successfully',
+            course
+        });
+    } catch (error) {
+        console.error('Main topic deletion error:', error);
+        res.status(500).json({ error: 'Failed to delete main topic' });
     }
 });
 

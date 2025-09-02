@@ -44,6 +44,9 @@ const EditContest = () => {
         isHidden: false
     });
 
+    // Add new state for editing individual test cases
+    const [editingTestCaseIndex, setEditingTestCaseIndex] = useState(-1);
+
     // Add new state for editing mode
     const [editingQuestionIndex, setEditingQuestionIndex] = useState(-1);
 
@@ -54,7 +57,7 @@ const EditContest = () => {
     const fetchContest = async () => {
         try {
             setLoading(true);
-            const response = await contestService.getContest(contestId);
+            const response = await contestService.getAdminContest(contestId); // Fixed: Use admin endpoint
             const contest = response.contest;
             
             console.log('Fetched contest:', contest); // Debug log
@@ -70,7 +73,7 @@ const EditContest = () => {
                 isActive: contest.isActive !== undefined ? contest.isActive : true
             });
             
-            // Ensure questions array is initialized properly
+            // Ensure questions array is initialized properly with test cases
             setQuestions(contest.questions?.map(q => ({
                 ...q,
                 testCases: q.testCases || [] // Ensure each question has testCases array
@@ -264,6 +267,87 @@ const EditContest = () => {
         });
         setEditingQuestionIndex(-1);
         toast.success(editingQuestionIndex === -1 ? 'Question added successfully!' : 'Question updated successfully!');
+    };
+
+    // Add new functions for editing individual test cases
+    const editTestCase = (index) => {
+        setEditingTestCaseIndex(index);
+        const testCaseToEdit = currentQuestion.testCases[index];
+        setCurrentTestCase({ ...testCaseToEdit });
+    };
+
+    const updateTestCase = () => {
+        if (!currentTestCase.input.trim() || !currentTestCase.expectedOutput.trim()) {
+            toast.error('Please fill in both input and expected output');
+            return;
+        }
+
+        setCurrentQuestion(prev => ({
+            ...prev,
+            testCases: prev.testCases.map((tc, idx) => 
+                idx === editingTestCaseIndex ? { ...currentTestCase } : tc
+            )
+        }));
+
+        setCurrentTestCase({
+            input: '',
+            expectedOutput: '',
+            marks: 10,
+            isHidden: false
+        });
+        setEditingTestCaseIndex(-1);
+        toast.success('Test case updated successfully!');
+    };
+
+    const cancelTestCaseEdit = () => {
+        setCurrentTestCase({
+            input: '',
+            expectedOutput: '',
+            marks: 10,
+            isHidden: false
+        });
+        setEditingTestCaseIndex(-1);
+    };
+
+    // Function to calculate total marks for a question
+    const calculateTotalMarks = (testCases) => {
+        return testCases?.reduce((sum, tc) => sum + (tc.marks || 0), 0) || 0;
+    };
+
+    // Function to toggle test case visibility
+    const toggleTestCaseVisibility = (questionIndex, testCaseIndex) => {
+        setQuestions(prev => 
+            prev.map((q, qIdx) => 
+                qIdx === questionIndex 
+                    ? {
+                        ...q,
+                        testCases: q.testCases.map((tc, tcIdx) => 
+                            tcIdx === testCaseIndex 
+                                ? { ...tc, isHidden: !tc.isHidden }
+                                : tc
+                        )
+                    }
+                    : q
+            )
+        );
+    };
+
+    // Function to edit test case marks inline
+    const updateTestCaseMarks = (questionIndex, testCaseIndex, newMarks) => {
+        setQuestions(prev => 
+            prev.map((q, qIdx) => 
+                qIdx === questionIndex 
+                    ? {
+                        ...q,
+                        testCases: q.testCases.map((tc, tcIdx) => 
+                            tcIdx === testCaseIndex 
+                                ? { ...tc, marks: parseInt(newMarks) || 0 }
+                                : tc
+                        )
+                    }
+                    : q
+            )
+        );
     };
 
     if (loading) {
@@ -594,30 +678,142 @@ const EditContest = () => {
                                 {/* Current Test Cases */}
                                 {(currentQuestion.testCases || []).length > 0 && (
                                     <div className="mt-6">
-                                        <h4 className="font-medium text-gray-900 mb-3">
-                                            Current Test Cases ({(currentQuestion.testCases || []).length})
-                                        </h4>
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h4 className="font-medium text-gray-900">
+                                                Current Test Cases ({(currentQuestion.testCases || []).length})
+                                            </h4>
+                                            <div className="text-sm text-gray-600">
+                                                Total Marks: {calculateTotalMarks(currentQuestion.testCases)}
+                                            </div>
+                                        </div>
                                         <div className="space-y-3">
                                             {(currentQuestion.testCases || []).map((testCase, index) => (
                                                 <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <div className="flex items-center space-x-3">
-                                                            <span className="font-medium text-gray-900">Test Case {index + 1}</span>
-                                                            <span className="text-sm text-gray-600">Marks: {testCase.marks}</span>
-                                                            {testCase.isHidden && (
-                                                                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                                                                    Hidden
-                                                                </span>
-                                                            )}
+                                                    {editingTestCaseIndex === index ? (
+                                                        // Edit mode
+                                                        <div className="space-y-4">
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="font-medium text-gray-900">Editing Test Case {index + 1}</span>
+                                                                <div className="flex space-x-2">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={updateTestCase}
+                                                                        className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                                                                    >
+                                                                        Save
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={cancelTestCaseEdit}
+                                                                        className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Input</label>
+                                                                    <textarea
+                                                                        name="input"
+                                                                        value={currentTestCase.input}
+                                                                        onChange={handleTestCaseChange}
+                                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                        rows="3"
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Expected Output</label>
+                                                                    <textarea
+                                                                        name="expectedOutput"
+                                                                        value={currentTestCase.expectedOutput}
+                                                                        onChange={handleTestCaseChange}
+                                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                        rows="3"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center space-x-4">
+                                                                <div>
+                                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Marks</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        name="marks"
+                                                                        value={currentTestCase.marks}
+                                                                        onChange={handleTestCaseChange}
+                                                                        className="w-20 border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                        min="1"
+                                                                    />
+                                                                </div>
+                                                                <label className="flex items-center mt-5">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        name="isHidden"
+                                                                        checked={currentTestCase.isHidden}
+                                                                        onChange={handleTestCaseChange}
+                                                                        className="mr-2"
+                                                                    />
+                                                                    <span className="text-sm text-gray-700">Hidden test case</span>
+                                                                </label>
+                                                            </div>
                                                         </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removeTestCase(index)}
-                                                            className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-lg transition-all duration-200"
-                                                        >
-                                                            <FiTrash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
+                                                    ) : (
+                                                        // View mode
+                                                        <div>
+                                                            <div className="flex justify-between items-center mb-2">
+                                                                <div className="flex items-center space-x-3">
+                                                                    <span className="font-medium text-gray-900">Test Case {index + 1}</span>
+                                                                    <span className="text-sm text-gray-600">Marks: {testCase.marks}</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const updatedTestCases = currentQuestion.testCases.map((tc, idx) => 
+                                                                                idx === index ? { ...tc, isHidden: !tc.isHidden } : tc
+                                                                            );
+                                                                            setCurrentQuestion(prev => ({ ...prev, testCases: updatedTestCases }));
+                                                                        }}
+                                                                        className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                                                                            testCase.isHidden 
+                                                                                ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' 
+                                                                                : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                                                        }`}
+                                                                    >
+                                                                        {testCase.isHidden ? 'Hidden' : 'Public'}
+                                                                    </button>
+                                                                </div>
+                                                                <div className="flex space-x-2">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => editTestCase(index)}
+                                                                        className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-2 rounded-lg transition-all duration-200"
+                                                                    >
+                                                                        <FiEdit className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => removeTestCase(index)}
+                                                                        className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-lg transition-all duration-200"
+                                                                    >
+                                                                        <FiTrash2 className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                                                <div>
+                                                                    <div className="font-medium text-gray-700 mb-1">Input:</div>
+                                                                    <pre className="bg-white p-2 rounded text-xs border overflow-x-auto max-h-20">
+                                                                        {testCase.input}
+                                                                    </pre>
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-medium text-gray-700 mb-1">Expected Output:</div>
+                                                                    <pre className="bg-white p-2 rounded text-xs border overflow-x-auto max-h-20">
+                                                                        {testCase.expectedOutput}
+                                                                    </pre>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
@@ -672,23 +868,62 @@ const EditContest = () => {
                                                 {/* Test Cases Display */}
                                                 {question.testCases && question.testCases.length > 0 && (
                                                     <div className="mt-4">
-                                                        <h4 className="font-medium text-gray-900 mb-3 flex items-center space-x-2">
-                                                            <FiUsers className="w-4 h-4 text-gray-500" />
-                                                            <span>Test Cases ({question.testCases.length})</span>
-                                                        </h4>
-                                                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                                                        <div className="flex justify-between items-center mb-3">
+                                                            <h4 className="font-medium text-gray-900 flex items-center space-x-2">
+                                                                <FiUsers className="w-4 h-4 text-gray-500" />
+                                                                <span>Test Cases ({question.testCases.length})</span>
+                                                            </h4>
+                                                            <div className="text-sm text-gray-600">
+                                                                Total Marks: {calculateTotalMarks(question.testCases)}
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2 max-h-60 overflow-y-auto">
                                                             {question.testCases.map((testCase, tcIndex) => (
                                                                 <div key={tcIndex} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                                                                     <div className="flex justify-between items-center mb-2">
-                                                                        <span className="text-sm font-medium text-gray-700">Test Case {tcIndex + 1}</span>
-                                                                        <div className="flex items-center space-x-2">
-                                                                            <span className="text-xs text-gray-600">Marks: {testCase.marks}</span>
-                                                                            {testCase.isHidden && (
-                                                                                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                                                                                    Hidden
-                                                                                </span>
-                                                                            )}
+                                                                        <div className="flex items-center space-x-3">
+                                                                            <span className="text-sm font-medium text-gray-700">Test Case {tcIndex + 1}</span>
+                                                                            <div className="flex items-center space-x-2">
+                                                                                <span className="text-xs text-gray-600">Marks:</span>
+                                                                                <input
+                                                                                    type="number"
+                                                                                    value={testCase.marks}
+                                                                                    onChange={(e) => updateTestCaseMarks(index, tcIndex, e.target.value)}
+                                                                                    className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                                    min="1"
+                                                                                />
+                                                                            </div>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => toggleTestCaseVisibility(index, tcIndex)}
+                                                                                className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                                                                                    testCase.isHidden 
+                                                                                        ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' 
+                                                                                        : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                                                                }`}
+                                                                            >
+                                                                                {testCase.isHidden ? 'Hidden' : 'Public'}
+                                                                            </button>
                                                                         </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setQuestions(prev => 
+                                                                                    prev.map((q, qIdx) => 
+                                                                                        qIdx === index 
+                                                                                            ? {
+                                                                                                ...q,
+                                                                                                testCases: q.testCases.filter((_, tcIdx) => tcIdx !== tcIndex)
+                                                                                            }
+                                                                                            : q
+                                                                                    )
+                                                                                );
+                                                                                toast.success('Test case removed successfully!');
+                                                                            }}
+                                                                            className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded transition-all duration-200"
+                                                                        >
+                                                                            <FiTrash2 className="w-3 h-3" />
+                                                                        </button>
                                                                     </div>
                                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                                                                         <div>

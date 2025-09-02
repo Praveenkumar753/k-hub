@@ -15,9 +15,9 @@ router.get('/', async (req, res) => {
             isActive: true,
             endTime: { $gte: now }
         })
-        .select('name description startTime endTime duration createdAt')
+        .select('name description startTime endTime duration allowedLanguages maxAttempts questions createdAt')
         .sort({ startTime: 1 });
-
+        
         res.json({ contests });
     } catch (error) {
         console.error('Error fetching contests:', error);
@@ -39,6 +39,30 @@ router.get('/:id', async (req, res) => {
         if (!contest.isActive || contest.endTime < now) {
             return res.status(403).json({ error: 'Contest is not accessible' });
         }
+
+        // Get user's submissions for this contest
+        const userSubmissions = await Submission.find({ 
+            contestId: req.params.id, 
+            userId: req.user._id 
+        }).sort({ submittedAt: -1 });
+
+        // Create a map of best scores per question
+        const questionScores = new Map();
+        userSubmissions.forEach(submission => {
+            const questionId = submission.questionId.toString();
+            const currentBest = questionScores.get(questionId) || { marksAwarded: 0, maxMarks: 0, status: 'not_attempted' };
+            
+            if (submission.marksAwarded >= currentBest.marksAwarded) {
+                questionScores.set(questionId, {
+                    marksAwarded: submission.marksAwarded || 0,
+                    maxMarks: submission.maxMarks || 0,
+                    status: submission.status,
+                    scorePercentage: submission.scorePercentage || 0,
+                    submissionId: submission._id,
+                    submittedAt: submission.submittedAt
+                });
+            }
+        });
 
         // Don't send test cases to participants (only sample input/output)
         const contestData = {
@@ -62,10 +86,12 @@ router.get('/:id', async (req, res) => {
                 sampleOutput: question.sampleOutput,
                 timeLimit: question.timeLimit,
                 memoryLimit: question.memoryLimit,
-                totalMarks: question.totalMarks
+                totalMarks: question.totalMarks,
+                // Add user's submission data for this question
+                userSubmission: questionScores.get(question._id.toString()) || null
             }))
         };
-
+        console.log(contestData);
         res.json({ contest: contestData });
     } catch (error) {
         console.error('Error fetching contest:', error);

@@ -35,7 +35,9 @@ import Courses from './pages/admin/Courses';
 import ModuleList from './pages/admin/ModuleList';
 import NotificationManagement from './pages/admin/NotificationManagement';
 import AddQuiz from './pages/admin/AddQuiz';
+import EditQuiz from './pages/admin/EditQuiz';
 import AddTask from './pages/admin/AddTask';
+import EditTask from './pages/admin/EditTask';
 
 // Styles
 import './App.css';
@@ -179,10 +181,22 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/admin/quizzes/edit/:quizId" element={
+                <ProtectedRoute adminOnly={true}>
+                  <EditQuiz />
+                </ProtectedRoute>
+              } />
+              
               {/* Admin Task Routes */}
               <Route path="/admin/tasks/new/:courseId/:moduleId" element={
                 <ProtectedRoute adminOnly={true}>
                   <AddTask />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/tasks/edit/:taskId" element={
+                <ProtectedRoute adminOnly={true}>
+                  <EditTask />
                 </ProtectedRoute>
               } />
               
@@ -191,7 +205,7 @@ function App() {
             </Routes>
             
             {/* Load Balancer Dashboard - Only show when authenticated */}
-            <LoadBalancerDashboard />
+            {/* <LoadBalancerDashboard /> */}
             
             <ToastContainer
               position="top-right"

@@ -49,13 +49,6 @@ const Navbar = () => {
                                         <span>Admin Panel</span>
                                     </Link>
                                     <Link 
-                                        to="/admin/courses" 
-                                        className="flex items-center space-x-1 px-3 py-2 rounded-md hover:bg-blue-700 transition-colors"
-                                    >
-                                        <FiBook size={18} />
-                                        <span>Courses</span>
-                                    </Link>
-                                    <Link 
                                         to="/admin/user-management" 
                                         className="flex items-center space-x-1 px-3 py-2 rounded-md hover:bg-blue-700 transition-colors"
                                     >

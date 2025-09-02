@@ -17,7 +17,9 @@ import {
     FiAlertCircle,
     FiRefreshCw,
     FiSettings,
-    FiTerminal
+    FiTerminal,
+    FiChevronRight,
+    FiList
 } from 'react-icons/fi';
 
 // Move languageTemplates outside component to prevent recreating on each render
@@ -67,10 +69,12 @@ const QuestionSolver = () => {
     const [question, setQuestion] = useState(null);
     const [contest, setContest] = useState(null);
     const [code, setCode] = useState('');
-    const [language, setLanguage] = useState('cpp');
+    const [language, setLanguage] = useState(''); // Initialize as empty - will be set based on contest
     const [submitting, setSubmitting] = useState(false);
     const [submissions, setSubmissions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [allSubmissions, setAllSubmissions] = useState({}); // Store submissions for all questions
+    const [showQuestionNav, setShowQuestionNav] = useState(false); // Toggle question navigation
     
     // Run functionality states
     const [running, setRunning] = useState(false);
@@ -90,9 +94,11 @@ const QuestionSolver = () => {
             setQuestion(questionData.question);
             setSubmissions(submissionsData.submissions);
             
-            // Only set code template if it hasn't been set or language changes
-            if (!code || code === languageTemplates[language]) {
-                setCode(languageTemplates[language]);
+            // Set default language based on contest's allowed languages
+            if (!language && contestData.contest.allowedLanguages?.length > 0) {
+                const defaultLang = contestData.contest.allowedLanguages[0];
+                setLanguage(defaultLang);
+                setCode(languageTemplates[defaultLang] || '');
             }
         } catch (error) {
             toast.error('Failed to fetch question details');
@@ -100,11 +106,17 @@ const QuestionSolver = () => {
         } finally {
             setLoading(false);
         }
-    }, [contestId, questionId, language, code]);
+    }, [contestId, questionId, language]); // Remove code from dependency to prevent infinite loops
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    // Handle language change with immediate template update
+    const handleLanguageChange = (newLanguage) => {
+        setLanguage(newLanguage);
+        setCode(languageTemplates[newLanguage] || '');
+    };
 
     // Update submission polling logic
     const pollSubmission = useCallback(async (submissionId) => {
@@ -268,19 +280,124 @@ const QuestionSolver = () => {
         <>
             <Navbar />
             <div className="flex h-screen bg-gray-100">
-                {/* Problem Description Panel */}
-                <div className="w-1/2 bg-white border-r border-gray-300 overflow-y-auto">
-                    <div className="p-6">
-                        {/* Back Button */}
+                {/* Question Navigation Sidebar */}
+                <div className={`${showQuestionNav ? 'w-64' : 'w-12'} bg-white border-r border-gray-300 transition-all duration-300 flex flex-col`}>
+                    <div className="p-4 border-b border-gray-200">
                         <button
-                            onClick={() => navigate(`/contest/${contestId}`)}
-                            className="flex items-center px-4 py-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors mb-6"
+                            onClick={() => setShowQuestionNav(!showQuestionNav)}
+                            className="flex items-center space-x-2 w-full px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                         >
-                            <FiArrowLeft className="w-5 h-5 mr-2" />
-                            <span className="font-medium">Back to Contest</span>
+                            <FiList className="w-5 h-5" />
+                            {showQuestionNav && <span className="font-medium">Questions</span>}
                         </button>
+                    </div>
+                    
+                    {showQuestionNav && contest?.questions && (
+                        <div className="flex-1 overflow-y-auto p-4">
+                            <div className="space-y-2">
+                                {contest.questions.map((q, index) => {
+                                    const isActive = q._id === questionId;
+                                    const questionSubmissions = allSubmissions[q._id] || [];
+                                    const bestSubmission = questionSubmissions.find(s => s.status === 'completed') || 
+                                                          questionSubmissions[0];
+                                    
+                                    return (
+                                        <button
+                                            key={q._id}
+                                            onClick={() => navigate(`/contest/${contestId}/question/${q._id}`)}
+                                            className={`w-full p-3 rounded-lg text-left transition-all duration-200 ${
+                                                isActive 
+                                                    ? 'bg-blue-100 border-2 border-blue-300 text-blue-900' 
+                                                    : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-sm font-bold">Q{index + 1}</span>
+                                                <div className="flex items-center space-x-1">
+                                                    {bestSubmission?.status === 'completed' && bestSubmission.totalMarks > 0 ? (
+                                                        <FiCheckCircle className="w-4 h-4 text-green-600" />
+                                                    ) : bestSubmission?.status === 'error' ? (
+                                                        <FiXCircle className="w-4 h-4 text-red-600" />
+                                                    ) : bestSubmission ? (
+                                                        <FiAlertCircle className="w-4 h-4 text-yellow-600" />
+                                                    ) : null}
+                                                    <span className={`w-2 h-2 rounded-full ${
+                                                        q.difficulty === 'Easy' ? 'bg-green-500' :
+                                                        q.difficulty === 'Medium' ? 'bg-yellow-500' :
+                                                        'bg-red-500'
+                                                    }`}></span>
+                                                </div>
+                                            </div>
+                                            <div className="text-sm font-medium text-gray-900 line-clamp-1 mb-1">
+                                                {q.title}
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs text-gray-500">
+                                                <span>{q.totalMarks} marks</span>
+                                                {bestSubmission && (
+                                                    <span className="text-blue-600 font-medium">
+                                                        {bestSubmission.totalMarks}/{bestSubmission.maxMarks}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </div>
 
-                        {/* Problem Header */}
+                {/* Problem Description Panel */}
+                <div className={`${showQuestionNav ? 'w-1/2' : 'w-3/5'} bg-white border-r border-gray-300 overflow-y-auto transition-all duration-300`}>
+                    <div className="p-6">
+                        {/* Back Button and Question Navigation */}
+                        <div className="flex items-center justify-between mb-6">
+                            <button
+                                onClick={() => navigate(`/contest/${contestId}`)}
+                                className="flex items-center px-4 py-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                            >
+                                <FiArrowLeft className="w-5 h-5 mr-2" />
+                                <span className="font-medium">Back to Contest</span>
+                            </button>
+                            
+                            {/* Question Navigation Arrows */}
+                            {contest?.questions && contest.questions.length > 1 && (
+                                <div className="flex items-center space-x-2">
+                                    {(() => {
+                                        const currentIndex = contest.questions.findIndex(q => q._id === questionId);
+                                        const prevQuestion = currentIndex > 0 ? contest.questions[currentIndex - 1] : null;
+                                        const nextQuestion = currentIndex < contest.questions.length - 1 ? contest.questions[currentIndex + 1] : null;
+                                        
+                                        return (
+                                            <>
+                                                <button
+                                                    onClick={() => prevQuestion && navigate(`/contest/${contestId}/question/${prevQuestion._id}`)}
+                                                    disabled={!prevQuestion}
+                                                    className="flex items-center px-3 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <FiArrowLeft className="w-4 h-4 mr-1" />
+                                                    <span className="text-sm">Previous</span>
+                                                </button>
+                                                
+                                                <span className="px-3 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg">
+                                                    {currentIndex + 1} of {contest.questions.length}
+                                                </span>
+                                                
+                                                <button
+                                                    onClick={() => nextQuestion && navigate(`/contest/${contestId}/question/${nextQuestion._id}`)}
+                                                    disabled={!nextQuestion}
+                                                    className="flex items-center px-3 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <span className="text-sm">Next</span>
+                                                    <FiChevronRight className="w-4 h-4 ml-1" />
+                                                </button>
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+                            )}
+                        </div>
+
                         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-6 border border-blue-100">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center space-x-3">
@@ -451,7 +568,7 @@ const QuestionSolver = () => {
                                         <label className="text-sm font-semibold text-gray-700">Programming Language</label>
                                         <select
                                             value={language}
-                                            onChange={(e) => setLanguage(e.target.value)}
+                                            onChange={(e) => handleLanguageChange(e.target.value)}
                                             className="ml-2 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                                         >
                                             {contest.allowedLanguages?.map((lang) => (

@@ -137,6 +137,8 @@ const ContestDetails = () => {
                         <div className="space-y-4">
                             {contest.questions.map((question, index) => {
                                 const difficultyColor = getDifficultyColor(question.difficulty);
+                                const userSubmission = question.userSubmission;
+                                
                                 return (
                                     <div key={question._id} className="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow">
                                         <div className="p-6">
@@ -149,6 +151,40 @@ const ContestDetails = () => {
                                                         <h3 className="text-xl font-semibold text-gray-900">
                                                             {question.title}
                                                         </h3>
+                                                        {/* Show submission status and score */}
+                                                        {userSubmission && (
+                                                            <div className="flex items-center space-x-2 ml-4">
+                                                                {userSubmission.status === 'completed' && userSubmission.marksAwarded > 0 ? (
+                                                                    <div className="flex items-center space-x-1 bg-green-100 px-2 py-1 rounded-full">
+                                                                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                                                        <span className="text-xs font-semibold text-green-800">
+                                                                            {userSubmission.marksAwarded}/{userSubmission.maxMarks}
+                                                                        </span>
+                                                                    </div>
+                                                                ) : userSubmission.status === 'error' ? (
+                                                                    <div className="flex items-center space-x-1 bg-red-100 px-2 py-1 rounded-full">
+                                                                        <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                                                        <span className="text-xs font-semibold text-red-800">
+                                                                            0/{userSubmission.maxMarks}
+                                                                        </span>
+                                                                    </div>
+                                                                ) : userSubmission.status === 'completed' ? (
+                                                                    <div className="flex items-center space-x-1 bg-yellow-100 px-2 py-1 rounded-full">
+                                                                        <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                                                        <span className="text-xs font-semibold text-yellow-800">
+                                                                            {userSubmission.marksAwarded}/{userSubmission.maxMarks}
+                                                                        </span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex items-center space-x-1 bg-blue-100 px-2 py-1 rounded-full">
+                                                                        <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                                                        <span className="text-xs font-semibold text-blue-800">
+                                                                            Attempted
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <p className="text-gray-600 mb-4 line-clamp-2">
                                                         {question.description}
@@ -173,9 +209,21 @@ const ContestDetails = () => {
                                                 {status.status === 'active' ? (
                                                     <Link
                                                         to={`/contest/${contestId}/question/${question._id}`}
-                                                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                                                        className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                                                            userSubmission && userSubmission.status === 'completed' && userSubmission.marksAwarded > 0
+                                                                ? 'bg-green-600 text-white hover:bg-green-700'
+                                                                : userSubmission
+                                                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                                                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                                                        }`}
                                                     >
-                                                        Solve
+                                                        {userSubmission && userSubmission.status === 'completed' && userSubmission.marksAwarded > 0 ? (
+                                                            <>Solved</>
+                                                        ) : userSubmission ? (
+                                                            <>Try Again</>
+                                                        ) : (
+                                                            <>Solve</>
+                                                        )}
                                                         <FiArrowRight className="ml-2" />
                                                     </Link>
                                                 ) : status.status === 'upcoming' ? (
