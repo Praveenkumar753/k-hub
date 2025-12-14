@@ -2,8 +2,8 @@ import axios from 'axios';
 
 // Backend server configuration - easily replaceable with production URLs
 const BACKEND_SERVERS = [
-    // 'https://khub-mqjz.onrender.com/api'
-    'http://localhost:5000/api'
+    'https://k-hub-ug2s.onrender.com'
+    // 'http://localhost:5000/api'
     // 'http://localhost:5001/api',  
     // 'http://localhost:5002/api',  
     // 'http://localhost:5003/api',
@@ -173,3 +173,4 @@ export const loadBalancerStats = {
 };
 
 export default api;
+
