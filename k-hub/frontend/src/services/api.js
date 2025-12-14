@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Backend server configuration - easily replaceable with production URLs
 const BACKEND_SERVERS = [
-    'https://k-hub-ug2s.onrender.com'
+    'https://k-hub-ug2s.onrender.com/api'
     // 'http://localhost:5000/api'
     // 'http://localhost:5001/api',  
     // 'http://localhost:5002/api',  
@@ -173,4 +173,5 @@ export const loadBalancerStats = {
 };
 
 export default api;
+
 
